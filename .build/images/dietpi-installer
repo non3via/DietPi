@@ -1647,7 +1647,7 @@ _EOF_
 
 		if (( $G_HW_MODEL == 99 ))
 		then
-			G_EXEC apt-mark hold base-files armbian-firmware linux-image-legacy-sunxi64 linux-dtb-legacy-sunxi64 linux-u-boot-repkapi3-legacy
+			G_EXEC_DESC='Hold board packages' G_EXEC apt-mark hold base-files armbian-firmware linux-image-legacy-sunxi64 linux-dtb-legacy-sunxi64 linux-u-boot-repkapi3-legacy
 		fi
 
 		# Remove any autoremove prevention
@@ -1702,6 +1702,7 @@ _EOF_
 		G_DIETPI-NOTIFY 2 'Restoring default base files:'
 		# shellcheck disable=SC2114
 		rm -Rfv /etc/{motd,profile,update-motd.d,issue{,.net}} /root /home /media /var/mail
+		(( $G_HW_MODEL == 99 )) && G_EXEC mkdir -p /root
 		G_AGI --reinstall base-files # Restore /etc/{update-motd.d,issue{,.net}} /root /home
 		[[ -L '/var/lock' ]] || { [[ -d '/var/lock' ]] && G_EXEC rm -R /var/lock; G_EXEC ln -s /run/lock /var/lock; } # Armbian images currently ship with this as directory (bug), and postinst fails migrating it to symlink => /run/lock if that directory has content: https://github.com/MichaIng/DietPi/issues/6407
 		G_EXEC /var/lib/dpkg/info/base-files.postinst configure # Restore /root/.{profile,bashrc} /etc/{motd,profile} /media /var/mail
@@ -1725,8 +1726,7 @@ _EOF_
 		getent group openmediavault-engined > /dev/null && groupdel openmediavault-engined # OMV
 		getent group openmediavault-webgui > /dev/null && groupdel openmediavault-webgui # OMV
 
-		G_DIETPI-NOTIFY 2 'Resetting root user account'
-		G_EXEC mkdir -p /root
+		G_DIETPI-NOTIFY 2 'Resetting root user account'		
 		G_EXEC usermod -d /root -s /bin/bash root
 		G_EXEC eval 'chpasswd <<< '\''root:dietpi'\'
 
