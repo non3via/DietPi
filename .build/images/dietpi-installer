@@ -385,6 +385,7 @@ _EOF_
 
 				elif [[ $userland_arch == 'arm64' ]]
 				then
+					G_WHIP_DEFAULT_ITEM=99
 					G_WHIP_MENU_ARRAY=('99' ': Repka Pi 3 (Armbian)')					
 
 					if findmnt -M /boot/firmware &> /dev/null
