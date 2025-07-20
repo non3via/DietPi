@@ -1726,6 +1726,7 @@ _EOF_
 		getent group openmediavault-webgui > /dev/null && groupdel openmediavault-webgui # OMV
 
 		G_DIETPI-NOTIFY 2 'Resetting root user account'
+		G_EXEC mkdir -p /root
 		G_EXEC usermod -d /root -s /bin/bash root
 		G_EXEC eval 'chpasswd <<< '\''root:dietpi'\'
 
