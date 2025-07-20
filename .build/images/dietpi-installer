@@ -385,15 +385,17 @@ _EOF_
 
 				elif [[ $userland_arch == 'arm64' ]]
 				then
+					G_WHIP_MENU_ARRAY=('99' ': Repka Pi 3 (Armbian)')					
+
 					if findmnt -M /boot/firmware &> /dev/null
 					then
-						G_WHIP_MENU_ARRAY=(
+						G_WHIP_MENU_ARRAY+=(
 							'0' ': Raspberry Pi 2-5 (page size: 4k and 16k)'
 							'4' ': Raspberry Pi 2-5 (page size: 4k only)'
 							'5' ': Raspberry Pi 5 (page size: 16k only)'
 						)
 					else
-						G_WHIP_MENU_ARRAY=('0' ': Raspberry Pi 2-4')
+						G_WHIP_MENU_ARRAY+=('0' ': Raspberry Pi 2-4')
 					fi
 					G_WHIP_MENU_ARRAY+=(
 						'12' ': Odroid C2'
@@ -455,8 +457,7 @@ _EOF_
 						'26' ': Generic Allwinner H5'
 						'27' ': Generic Allwinner H6'
 						'28' ': Generic Amlogic S905'
-						'29' ': Generic Amlogic S922X'
-						'99' ': Repka-Pi 3 (Armbian)'
+						'29' ': Generic Amlogic S922X'						
 					)
 				else
 					G_DIETPI-NOTIFY 1 "Unsupported userland/OS architecture: \"$userland_arch\". Aborting...\n"
