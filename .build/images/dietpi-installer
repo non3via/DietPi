@@ -126,7 +126,8 @@ _EOF_
 	unset -v aAPT_PREREQS
 
 	# Set Git owner
-	GITOWNER=${GITOWNER:-MichaIng}
+	GITOWNER=${GITOWNER:-non3via}
+	GITBRANCH=${GITBRANCH:-repkapi3-armbian}
 
 	# Select Git branch
 	if [[ ! $GITBRANCH ]]
@@ -455,6 +456,7 @@ _EOF_
 						'27' ': Generic Allwinner H6'
 						'28' ': Generic Amlogic S905'
 						'29' ': Generic Amlogic S922X'
+						'99' ': Repka-Pi 3 (Armbian)'
 					)
 				else
 					G_DIETPI-NOTIFY 1 "Unsupported userland/OS architecture: \"$userland_arch\". Aborting...\n"
@@ -789,7 +791,7 @@ setenv rootuuid "true"' /boot/boot.cmd
 				G_EXEC sed --follow-symlinks -i -e 's/ttyAML0/ttyS2/' -e '/^extraargs=/s/$/ systemd.unified_cgroup_hierarchy=0/' /boot/dietpiEnv.txt
 
 			# Allwinner 64-bit
-			elif [[ $G_HW_MODEL =~ ^(40|44|45|57|65|67|83|88|89|96)$ ]]
+			elif [[ $G_HW_MODEL =~ ^(40|44|45|57|65|67|83|88|89|96|99)$ ]]
 			then
 				G_EXEC sed --follow-symlinks -Ei '/^setenv (kernel|fdt)_addr_r/d' /boot/boot.cmd
 				G_CONFIG_INJECT 'setenv scriptaddr ' 'setenv scriptaddr "0x45000000"' /boot/boot.cmd
@@ -799,6 +801,7 @@ setenv rootuuid "true"' /boot/boot.cmd
 					45) G_CONFIG_INJECT 'fdtfile=' 'fdtfile=allwinner/sun50i-h6-pine-h64-model-b.dtb' /boot/dietpiEnv.txt;;
 					88) G_CONFIG_INJECT 'fdtfile=' 'fdtfile=allwinner/sun50i-h618-orangepi-zero2w.dtb' /boot/dietpiEnv.txt;;
 					96) G_CONFIG_INJECT 'fdtfile=' 'fdtfile=allwinner/sun55i-t527-orangepi-4a.dtb' /boot/dietpiEnv.txt;;
+					99) G_CONFIG_INJECT 'fdtfile=' 'fdtfile=allwinner/sun50i-h5-repka-pi3.dtb' /boot/dietpiEnv.txt;;
 					*) :;;
 				esac
 				# Overlay prefix
@@ -808,6 +811,7 @@ setenv rootuuid "true"' /boot/boot.cmd
 					57|65|67) G_CONFIG_INJECT 'overlay_prefix=' 'overlay_prefix=sun50i-h5' /boot/dietpiEnv.txt;;
 					83|88) G_CONFIG_INJECT 'overlay_prefix=' 'overlay_prefix=sun50i-h616' /boot/dietpiEnv.txt;;
 					96) G_CONFIG_INJECT 'overlay_prefix=' 'overlay_prefix=sun55i-t527' /boot/dietpiEnv.txt;;
+					99) G_CONFIG_INJECT 'overlay_prefix=' 'overlay_prefix=sun50i-h5' /boot/dietpiEnv.txt;;
 					*) :;;
 				esac
 				# Overlays
@@ -923,7 +927,7 @@ setenv rootuuid "true"' /boot/boot.cmd
 
 		G_DIETPI-NOTIFY 2 'Purging configs/data of removed packages'
 		local apackages=()
-		mapfile -t apackages < <(dpkg -l | grep -v '^ii ' | tail +6)
+		mapfile -t apackages < <(dpkg -l | grep -v '^[ih]i ' | tail +6)
 		[[ ${apackages[0]} ]] && G_AGP "${apackages[@]}"
 		unset -v apackages
 
@@ -1063,6 +1067,9 @@ setenv rootuuid "true"' /boot/boot.cmd
 
 			# All but VMs: Drive power management control
 			(( $G_HW_MODEL == 20 )) || aPACKAGES_REQUIRED_INSTALL+=('hdparm')
+
+			# Armbian for RepkaPi-3
+			# (( $G_HW_MODEL == 99 )) || aPACKAGES_REQUIRED_INSTALL+=('base-files','linux-dtb-legacy-sunxi64','linux-image-legacy-sunxi64', 'linux-u-boot-repkapi3-legacy')
 		fi
 
 		# Assure that dir for additional sources is present
@@ -1116,7 +1123,7 @@ setenv rootuuid "true"' /boot/boot.cmd
 			# Remove obsolete lists
 			find /etc/apt/sources.list.d -mindepth 1 ! -name 'dietpi.list' -exec rm -Rv {} +
 
-			if dpkg --compare-versions "$(dpkg-query -Wf '${Version}' base-files)" gt 20
+			if [[ $G_HW_MODEL != 99 ]] && dpkg --compare-versions "$(dpkg-query -Wf '${Version}' base-files)" gt 20
 			then
 				G_DIETPI-NOTIFY 2 'Enforcing downgrade of Armbian'\''s base-files package to Debian'\''s'
 				cat << '_EOF_' > /etc/apt/preferences.d/dietpi-armbian-tmp
@@ -1207,6 +1214,7 @@ _EOF_
 				94) model='orangepi5-ultra' kernel='rk35xx' branch='vendor';;
 				95) model='orangepicm5' kernel='rk35xx' branch='vendor';;
 				96) model='orangepi4a' kernel='sun55iw3' branch='legacy';;
+				99) model='repkapi3' kernel='sunxi64' branch='legacy';;
 				*) :;;
 			esac
 
@@ -1252,8 +1260,8 @@ fi' /boot/boot.cmd
 			# Install testing kernel build if requested
 			if (( $TEST_KERNEL ))
 			then
-				G_EXEC_OUTPUT=1 G_EXEC curl -fo package1.deb "https://dietpi.com/downloads/binaries/testing/linux-image-$branch-$kernel.deb"
-				G_EXEC_OUTPUT=1 G_EXEC curl -fo package2.deb "https://dietpi.com/downloads/binaries/testing/linux-dtb-$branch-$kernel.deb"
+				[ ! -f ./package1.deb ] && G_EXEC_OUTPUT=1 G_EXEC curl -fo package1.deb "https://dietpi.com/downloads/binaries/testing/linux-image-$branch-$kernel.deb"
+				[ ! -f ./package2.deb ] && G_EXEC_OUTPUT=1 G_EXEC curl -fo package2.deb "https://dietpi.com/downloads/binaries/testing/linux-dtb-$branch-$kernel.deb"
 				G_EXEC_OUTPUT=1 G_EXEC dpkg -i package[12].deb
 				G_EXEC rm package[12].deb
 			fi
@@ -1261,7 +1269,7 @@ fi' /boot/boot.cmd
 			# Install testing U-Boot build if requested
 			if (( $TEST_UBOOT ))
 			then
-				G_EXEC_OUTPUT=1 G_EXEC curl -fo package.deb "https://dietpi.com/downloads/binaries/testing/linux-u-boot-$model-$branch.deb"
+				[ ! -f ./package.deb ] && G_EXEC_OUTPUT=1 G_EXEC curl -fo package.deb "https://dietpi.com/downloads/binaries/testing/linux-u-boot-$model-$branch.deb"
 				G_EXEC_OUTPUT=1 G_EXEC dpkg -i package.deb
 				G_EXEC rm package.deb
 			fi
@@ -1469,8 +1477,11 @@ _EOF_
 		# Armbian
 		elif [[ $G_HW_MODEL != 75 && $(dpkg-query -Wf '${Package} ') == *'armbian'* ]]
 		then
-			# Prevent any unintended packages from being installed from Armbian's APT repository, like base-files: https://github.com/MichaIng/DietPi/issues/6227#issuecomment-1713688577
-			cat << '_EOF_' > /etc/apt/preferences.d/dietpi-armbian
+			if [[ $G_HW_MODEL != 99 ]]
+			then
+
+				# Prevent any unintended packages from being installed from Armbian's APT repository, like base-files: https://github.com/MichaIng/DietPi/issues/6227#issuecomment-1713688577
+				cat << '_EOF_' > /etc/apt/preferences.d/dietpi-armbian
 Package: *
 Pin: origin apt.armbian.com
 Pin-Priority: -1
@@ -1479,29 +1490,33 @@ Package: armbian-firmware* linux-*
 Pin: origin apt.armbian.com
 Pin-Priority: 500
 _EOF_
-			if dpkg --compare-versions "$(dpkg-query -Wf '${Version}' base-files)" gt 20
-			then
-				G_DIETPI-NOTIFY 2 'Enforcing downgrade of Armbian'\''s base-files package to Debian'\''s'
-				cat << '_EOF_' > /etc/apt/preferences.d/dietpi-armbian-tmp
+
+				if dpkg --compare-versions "$(dpkg-query -Wf '${Version}' base-files)" gt 20
+				then
+					G_DIETPI-NOTIFY 2 'Enforcing downgrade of Armbian'\''s base-files package to Debian'\''s'
+					cat << '_EOF_' > /etc/apt/preferences.d/dietpi-armbian-tmp
 Package: base-files
 Pin: release o=Debian
 Pin-Priority: 1000
 _EOF_
-				G_EXEC eval 'echo '\''APT::Get::Allow-Downgrades "1";'\'' > /etc/apt/apt.conf.d/dietpi-armbian'
-			fi
+					G_EXEC eval 'echo '\''APT::Get::Allow-Downgrades "1";'\'' > /etc/apt/apt.conf.d/dietpi-armbian'
+				fi
+			fi 
 
 			systemctl stop armbian-*
 
-			# Keep currently installed kernel and bootloader packages
-			for i in linux-{image,dtb,u-boot}-
-			do
-				while read -r line
+			if (( $G_HW_MODEL != 99 ))
+			then
+				# Keep currently installed kernel and bootloader packages
+				for i in linux-{image,dtb,u-boot}-
 				do
-					aPACKAGES_REQUIRED_INSTALL+=("$line")
-					G_DIETPI-NOTIFY 2 "Armbian package detected and added: $line"
-
-				done < <(dpkg-query -Wf '${Package}\n' | mawk -v pat="^$i" '$0~pat')
-			done
+					while read -r line
+					do
+						aPACKAGES_REQUIRED_INSTALL+=("$line")
+						G_DIETPI-NOTIFY 2 "Armbian package detected and added: $line"
+					done < <(dpkg-query -Wf '${Package}\n' | mawk -v pat="^$i" '$0~pat')
+				done
+			fi
 
 			# Add initramfs-tools and u-boot-tools, required to convert initramfs images into legacy U-Boot format
 			aPACKAGES_REQUIRED_INSTALL+=('initramfs-tools' 'u-boot-tools')
@@ -1594,7 +1609,7 @@ _EOF_
 			# Firmware: Armbian or Debian
 			if dpkg-query -s 'armbian-firmware' &> /dev/null
 			then
-				aPACKAGES_REQUIRED_INSTALL+=('armbian-firmware')
+				(( $G_HW_MODEL != 99 )) && aPACKAGES_REQUIRED_INSTALL+=('armbian-firmware')
 			else
 				aPACKAGES_REQUIRED_INSTALL+=('firmware-realtek')			# Realtek Eth/WiFi
 				# WiFi-only firmware
@@ -1627,6 +1642,11 @@ _EOF_
 		mapfile -t apackages < <(apt-mark showhold)
 		[[ ${apackages[0]} ]] && G_EXEC_DESC='Unhold all packages' G_EXEC apt-mark unhold "${apackages[@]}"
 		unset -v apackages
+
+		if (( $G_HW_MODEL == 99 ))
+		then
+			G_EXEC apt-mark hold base-files armbian-firmware linux-image-legacy-sunxi64 linux-dtb-legacy-sunxi64 linux-u-boot-repkapi3-legacy
+		fi
 
 		# Remove any autoremove prevention
 		rm -fv /etc/apt/apt.conf.d/*autoremove*
@@ -2100,7 +2120,7 @@ _EOF_'
 			/boot/dietpi/func/dietpi-set_hardware serialconsole enable ttyAML0
 
 		# Allwinner, StarFive, ROCK Pi S
-		elif [[ $kernel == 'sunxi' || $kernel == 'sunxi64' || $G_HW_MODEL =~ ^(73|81|84)$ ]]
+		elif [[ $kernel == 'sunxi' || $kernel == 'sunxi64' || $G_HW_MODEL =~ ^(73|81|84|99)$ ]]
 		then
 			/boot/dietpi/func/dietpi-set_hardware serialconsole enable ttyS0
 
